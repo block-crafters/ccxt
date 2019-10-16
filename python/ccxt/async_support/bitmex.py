@@ -1123,7 +1123,7 @@ class bitmex (Exchange):
         if code != 'BTC':
             raise ExchangeError(self.id + ' supoprts BTC withdrawals only, other currencies coming soon...')
         request = {
-            'currency': 'XBt',  # temporarily
+            'currency': 'l',  # temporarily
             'amount': amount,
             'address': address,
             # 'otpToken': '123456',  # requires if two-factor auth(OTP) is enabled

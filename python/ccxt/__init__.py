@@ -105,6 +105,7 @@ from ccxt.btctradeim import btctradeim                      # noqa: F401
 from ccxt.btctradeua import btctradeua                      # noqa: F401
 from ccxt.btcturk import btcturk                            # noqa: F401
 from ccxt.buda import buda                                  # noqa: F401
+from ccxt.bybit import bybit                                # noqa: F401
 from ccxt.cex import cex                                    # noqa: F401
 from ccxt.chilebit import chilebit                          # noqa: F401
 from ccxt.cobinhood import cobinhood                        # noqa: F401
@@ -230,6 +231,7 @@ exchanges = [
     'btctradeua',
     'btcturk',
     'buda',
+    'bybit',
     'cex',
     'chilebit',
     'cobinhood',

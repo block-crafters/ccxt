@@ -123,6 +123,7 @@ class Exchange {
         'btctradeua',
         'btcturk',
         'buda',
+        'bybit',
         'cex',
         'chilebit',
         'cobinhood',

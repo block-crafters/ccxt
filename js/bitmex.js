@@ -1205,7 +1205,7 @@ module.exports = class bitmex extends Exchange {
             throw new ExchangeError (this.id + ' supoprts BTC withdrawals only, other currencies coming soon...');
         }
         const request = {
-            'currency': 'XBt', // temporarily
+            'currency': 'l', // temporarily
             'amount': amount,
             'address': address,
             // 'otpToken': '123456', // requires if two-factor auth (OTP) is enabled
