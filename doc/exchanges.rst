@@ -584,7 +584,7 @@ The ccxt library currently supports the following 124 cryptocurrency exchange ma
    :target: https://www.btcturk.com
 .. |buda| image:: https://user-images.githubusercontent.com/1294454/47380619-8a029200-d706-11e8-91e0-8a391fe48de3.jpg
    :target: https://www.buda.com
-.. |bybit| image:: https://api2.bybit.com/bybit.png
+.. |bybit| image:: https://user-images.githubusercontent.com/3198806/66993457-30a52700-f0fe-11e9-810c-a4a51e36fd20.png
    :target: https://www.bybit.com
 .. |cex| image:: https://user-images.githubusercontent.com/1294454/27766442-8ddc33b0-5ed8-11e7-8b98-f786aef0f3c9.jpg
    :target: https://cex.io/r/0/up105393824/0/
