@@ -519,7 +519,7 @@ The ccxt library currently supports the following cryptocurrency exchange market
    :target: https://www.kucoin.com/?rcode=E5wkqe
 .. |kucoin2| image:: https://user-images.githubusercontent.com/1294454/57369448-3cc3aa80-7196-11e9-883e-5ebeb35e4f57.jpg
    :target: https://www.kucoin.com/?rcode=E5wkqe
-.. |bybit| image:: https://api2.bybit.com/bybit.png
+.. |bybit| image:: https://user-images.githubusercontent.com/3198806/66993457-30a52700-f0fe-11e9-810c-a4a51e36fd20.png
    :target: https://www.bybit.com
 .. |digifinex| image:: https://user-images.githubusercontent.com/1294454/62184319-304e8880-b366-11e9-99fe-8011d6929195.jpg
    :target: https://www.digifinex.vip/en-ww/from/DhOzBg/3798****5114
