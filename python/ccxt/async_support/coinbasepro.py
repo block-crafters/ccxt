@@ -23,7 +23,7 @@ from ccxt.base.errors import OrderNotFound
 from ccxt.base.errors import NotSupported
 
 
-class coinbasepro (Exchange):
+class coinbasepro(Exchange):
 
     def describe(self):
         return self.deep_extend(super(coinbasepro, self).describe(), {
@@ -59,11 +59,17 @@ class coinbasepro (Exchange):
                 '1d': 86400,
             },
             'urls': {
-                'test': 'https://api-public.sandbox.pro.coinbase.com',
+                'test': {
+                    'public': 'https://api-public.sandbox.pro.coinbase.com',
+                    'private': 'https://api-public.sandbox.pro.coinbase.com',
+                },
                 'logo': 'https://user-images.githubusercontent.com/1294454/41764625-63b7ffde-760a-11e8-996d-a6328fa9347a.jpg',
-                'api': 'https://api.pro.coinbase.com',
+                'api': {
+                    'public': 'https://api.pro.coinbase.com',
+                    'private': 'https://api.pro.coinbase.com',
+                },
                 'www': 'https://pro.coinbase.com/',
-                'doc': 'https://docs.pro.coinbase.com/',
+                'doc': 'https://docs.pro.coinbase.com',
                 'fees': [
                     'https://docs.pro.coinbase.com/#fees',
                     'https://support.pro.coinbase.com/customer/en/portal/articles/2945310-fees',
@@ -98,6 +104,7 @@ class coinbasepro (Exchange):
                         'coinbase-accounts/{id}/addresses',
                         'fills',
                         'funding',
+                        'fees',
                         'orders',
                         'orders/{id}',
                         'otc/orders',
@@ -270,12 +277,32 @@ class coinbasepro (Exchange):
 
     async def fetch_order_book(self, symbol, limit=None, params={}):
         await self.load_markets()
+        # level 1 - only the best bid and ask
+        # level 2 - top 50 bids and asks(aggregated)
+        # level 3 - full order book(non aggregated)
         request = {
             'id': self.market_id(symbol),
             'level': 2,  # 1 best bidask, 2 aggregated, 3 full
         }
         response = await self.publicGetProductsIdBook(self.extend(request, params))
-        return self.parse_order_book(response)
+        #
+        #     {
+        #         "sequence":1924393896,
+        #         "bids":[
+        #             ["0.01825","24.34811287",2],
+        #             ["0.01824","72.5463",3],
+        #             ["0.01823","424.54298049",6],
+        #         ],
+        #         "asks":[
+        #             ["0.01826","171.10414904",4],
+        #             ["0.01827","22.60427028",1],
+        #             ["0.01828","397.46018784",7],
+        #         ]
+        #     }
+        #
+        orderbook = self.parse_order_book(response)
+        orderbook['nonce'] = self.safe_integer(response, 'sequence')
+        return orderbook
 
     async def fetch_ticker(self, symbol, params={}):
         await self.load_markets()
@@ -283,32 +310,56 @@ class coinbasepro (Exchange):
         request = {
             'id': market['id'],
         }
-        ticker = await self.publicGetProductsIdTicker(self.extend(request, params))
-        timestamp = self.parse8601(self.safe_value(ticker, 'time'))
-        bid = self.safe_float(ticker, 'bid')
-        ask = self.safe_float(ticker, 'ask')
-        last = self.safe_float(ticker, 'price')
+        # publicGetProductsIdTicker or publicGetProductsIdStats
+        method = self.safe_string(self.options, 'fetchTickerMethod', 'publicGetProductsIdTicker')
+        response = await getattr(self, method)(self.extend(request, params))
+        #
+        # publicGetProductsIdTicker
+        #
+        #     {
+        #         "trade_id":843439,
+        #         "price":"0.997999",
+        #         "size":"80.29769",
+        #         "time":"2020-01-28T02:13:33.012523Z",
+        #         "bid":"0.997094",
+        #         "ask":"0.998",
+        #         "volume":"1903188.03750000"
+        #     }
+        #
+        # publicGetProductsIdStats
+        #
+        #     {
+        #         "open": "34.19000000",
+        #         "high": "95.70000000",
+        #         "low": "7.06000000",
+        #         "volume": "2.41000000"
+        #     }
+        #
+        timestamp = self.parse8601(self.safe_value(response, 'time'))
+        bid = self.safe_float(response, 'bid')
+        ask = self.safe_float(response, 'ask')
+        last = self.safe_float(response, 'price')
         return {
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'high': None,
-            'low': None,
+            'high': self.safe_float(response, 'high'),
+            'low': self.safe_float(response, 'low'),
             'bid': bid,
             'bidVolume': None,
             'ask': ask,
             'askVolume': None,
             'vwap': None,
-            'open': None,
+            'open': self.safe_float(response, 'open'),
             'close': last,
             'last': last,
             'previousClose': None,
             'change': None,
             'percentage': None,
             'average': None,
-            'baseVolume': self.safe_float(ticker, 'volume'),
+            'baseVolume': self.safe_float(response, 'volume'),
             'quoteVolume': None,
-            'info': ticker,
+            'info': response,
         }
 
     def parse_trade(self, trade, market=None):
@@ -337,7 +388,7 @@ class coinbasepro (Exchange):
         id = self.safe_string(trade, 'trade_id')
         side = 'sell' if (trade['side'] == 'buy') else 'buy'
         orderId = self.safe_string(trade, 'order_id')
-        # GDAX returns inverted side to fetchMyTrades vs fetchTrades
+        # Coinbase Pro returns inverted side to fetchMyTrades vs fetchTrades
         if orderId is not None:
             side = 'buy' if (trade['side'] == 'buy') else 'sell'
         price = self.safe_float(trade, 'price')
@@ -438,8 +489,8 @@ class coinbasepro (Exchange):
                 symbol = base + '/' + quote
         status = self.parse_order_status(self.safe_string(order, 'status'))
         price = self.safe_float(order, 'price')
-        amount = self.safe_float(order, 'size')
         filled = self.safe_float(order, 'filled_size')
+        amount = self.safe_float(order, 'size', filled)
         remaining = None
         if amount is not None:
             if filled is not None:
@@ -582,7 +633,7 @@ class coinbasepro (Exchange):
             # deposit from a payment_method, like a bank account
             method += 'PaymentMethod'
         elif 'coinbase_account_id' in params:
-            # deposit into GDAX account from a Coinbase account
+            # deposit into Coinbase Pro account from a Coinbase account
             method += 'CoinbaseAccount'
         else:
             # deposit methodotherwise we did not receive a supported deposit location
@@ -698,7 +749,7 @@ class coinbasepro (Exchange):
         if method == 'GET':
             if query:
                 request += '?' + self.urlencode(query)
-        url = self.urls['api'] + request
+        url = self.urls['api'][api] + request
         if api == 'private':
             self.check_required_credentials()
             nonce = str(self.nonce())
@@ -776,13 +827,8 @@ class coinbasepro (Exchange):
             if body[0] == '{':
                 message = response['message']
                 feedback = self.id + ' ' + message
-                exact = self.exceptions['exact']
-                if message in exact:
-                    raise exact[message](feedback)
-                broad = self.exceptions['broad']
-                broadKey = self.findBroadlyMatchedKey(broad, message)
-                if broadKey is not None:
-                    raise broad[broadKey](feedback)
+                self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
+                self.throw_broadly_matched_exception(self.exceptions['broad'], message, feedback)
                 raise ExchangeError(feedback)  # unknown message
             raise ExchangeError(self.id + ' ' + body)
 
