@@ -69,7 +69,11 @@ You can obtain a live-updated version of the bundle by removing the version numb
 
 .. code:: html
 
+<<<<<<< HEAD
    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ccxt@1.21.98/dist/ccxt.browser.js"></script>
+=======
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ccxt@1.18.1247/dist/ccxt.browser.js"></script>
+>>>>>>> 7156fa18a01855c4187251e3ee101b43a0b6c99c
 
 Creates a global ``ccxt`` object:
 

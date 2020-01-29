@@ -2,6 +2,7 @@ Supported Exchanges
 ===================
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 The ccxt library currently supports the following 121 cryptocurrency exchange markets and trading APIs:
 
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -252,6 +253,10 @@ The ccxt library currently supports the following 121 cryptocurrency exchange ma
 =======
 The ccxt library currently supports the following 124 cryptocurrency exchange markets and trading APIs:
 
+=======
+The ccxt library currently supports the following 124 cryptocurrency exchange markets and trading APIs:
+
+>>>>>>> 7156fa18a01855c4187251e3ee101b43a0b6c99c
 +------------------------+----------------------+----------------------------------------------------------------------------------------------+-------+---------------------------------------------------------------------------------------------------+--------------------+
 |        logo            | id                   | name                                                                                         | ver   | doc                                                                                               | certified          |
 +========================+======================+==============================================================================================+=======+===================================================================================================+====================+
@@ -750,4 +755,7 @@ The ccxt library currently supports the following 124 cryptocurrency exchange ma
    :target: https://zaif.jp
 .. |zb| image:: https://user-images.githubusercontent.com/1294454/32859187-cd5214f0-ca5e-11e7-967d-96568e2e2bd1.jpg
    :target: https://www.zb.com
+<<<<<<< HEAD
 >>>>>>> Add bybit support
+=======
+>>>>>>> 7156fa18a01855c4187251e3ee101b43a0b6c99c

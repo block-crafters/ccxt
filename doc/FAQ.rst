@@ -38,16 +38,20 @@ When will you add feature ``foo`` for exchange ``bar`` ? What's the estimated ti
 ---------------------------------------------------------------------------------------------------------------
 
 We don't give promises or estimates on the open-source work. The reasoning behind this is explained in the previous paragraph.
+<<<<<<< HEAD
 
 When will you add the support for an exchange requested in the Issues?
 ----------------------------------------------------------------------
 
 Again, we can’t promise on the dates for adding this or that exchange, due to reasons outlined above. The answer will always remain the same: *as soon as we can*.
+=======
+>>>>>>> 7156fa18a01855c4187251e3ee101b43a0b6c99c
 
-What’s your progress on adding the feature ``foo`` that was requested earlier? How do you do implementing exchange ``bar``?
+What's your progress on adding the feature ``foo`` that was requested earlier? How do you do implementing exchange ``bar``?
 ---------------------------------------------------------------------------------------------------------------------------
 
 This type of questions is usually a waste of time, because answering it usually requires too much time for context-switching, and it often takes more time to answer this question, than to actually satisfy the request with code for a new feature or a new exchange. The progress of this open-source project is also open, so, whenever you're wondering how it is doing, take a look into commit history.
+<<<<<<< HEAD
 
 What is the status of this PR? Any update?
 ------------------------------------------
@@ -58,8 +62,10 @@ Can you point out the errors or what should I edit in my PR to get it merged int
 ------------------------------------------------------------------------------------------------
 
 Unfortunately, we don’t always have the time to quickly list out each and every single error in the code that prevents it from merging. It is often easier and faster to just go and fix the error rather than explain what one should do to fix it. Most of them are already outlined in the `CONTRIBUTING guidelines <https://github.com/ccxt/ccxt/blob/master/CONTRIBUTING.md#derived-exchange-classes>`__. The main rule of thumb is to follow **all guidelines literally**.
+=======
+>>>>>>> 7156fa18a01855c4187251e3ee101b43a0b6c99c
 
-Hey! The fix you’ve uploaded is in JS, would you fix Python / PHP as well, please?
+Hey! The fix you've uploaded is in JS, would you fix Python / PHP as well, please?
 ----------------------------------------------------------------------------------
 
 Our build system generates exchange-specific Python and PHP code for us automatically, so it is transpiled from JS, and there's no need to fix all languages separately one by one. Thus, if it is fixed in JS, it is fixed in Python pip and PHP Composer as well. The automatic build usually takes 5-10 minutes. Just upgrade your version with ``pip`` or ``composer`` after the new version arrives and you'll be fine. More about it here: https://github.com/ccxt/ccxt/blob/master/CONTRIBUTING.md#multilanguage-support
