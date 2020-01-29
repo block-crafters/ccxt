@@ -84,6 +84,7 @@ const exchanges = {
     'buda':                    require ('./js/buda.js'),
     'bw':                      require ('./js/bw.js'),
     'bytetrade':               require ('./js/bytetrade.js'),
+    'bybit':                   require ('./js/bybit.js'),
     'cex':                     require ('./js/cex.js'),
     'chilebit':                require ('./js/chilebit.js'),
     'cobinhood':               require ('./js/cobinhood.js'),

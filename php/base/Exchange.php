@@ -126,6 +126,7 @@ class Exchange {
         'buda',
         'bw',
         'bytetrade',
+        'bybit',
         'cex',
         'chilebit',
         'cobinhood',
