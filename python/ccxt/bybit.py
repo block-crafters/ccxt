@@ -313,6 +313,8 @@ class bybit (Exchange):
         }
         if price is not None:
             request['price'] = price
+        if not params.get('time_in_force'):
+            params['time_in_force'] = 'GoodTillCancel'
         response = None
         if ('stop_px' in list(params.keys())) and ('base_price' in list(params.keys())):
             response = self.privatePostStopOrderCreate(self.extend(request, params))
