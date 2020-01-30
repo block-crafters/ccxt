@@ -86,7 +86,16 @@ class bybit (Exchange):
                         'public/kline/list',
                         'public/orderBook/L2',
                         'private/execution/list',
+                        'private/order',
+                        'private/stop-order',
+                        'private/position/list'
                     ],
+                    'post': [
+                        'private/order/create',
+                        'private/order/cancel',
+                        'private/order/cancelAll',
+                        'private/stop-order/cancelAll'
+                    ]
                 },
                 'wapi': {
                     'get': [
