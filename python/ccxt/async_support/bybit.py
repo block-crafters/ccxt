@@ -313,11 +313,13 @@ class bybit (Exchange):
         }
         if price is not None:
             request['price'] = price
+        if not params.get('time_in_force'):
+            params['time_in_force'] = 'GoodTillCancel'
         response = None
         if ('stop_px' in list(params.keys())) and ('base_price' in list(params.keys())):
             response = await self.privatePostStopOrderCreate(self.extend(request, params))
         else:
-            response = await self.privatePostOrderCreate(self.extend(request, params))
+            response = await self.v2PostPrivateOrderCreate(self.extend(request, params))
         order = self.parse_order(response['result'])
         id = self.safe_string(order, 'order_id')
         self.orders[id] = order
@@ -502,31 +504,31 @@ class bybit (Exchange):
         }
         return self.safe_string(transTypes, transType, transType)
 
-    def parse_order(self, order):
+    def parse_order(self, order, market=None):
         symbol = None
         status = self.parse_order_status(self.safe_string_2(order, 'order_status', 'stop_order_status'))
-        marketId = self.safe_string(ticker, 'symbol')
-        market = self.safe_value(self.markets_by_id, marketId, market)
+        marketId = self.safe_string(order, 'symbol')
+        market = self.safe_value(self.markets_by_id, marketId, {})
         if market is not None:
             symbol = market['symbol']
         timestamp = self.parse8601(self.safe_string(order, 'created_at'))
         lastTradeTimestamp = self.truncate(self.safe_float(order, 'last_exec_time') * 1000, 0)
         qty = self.safe_float(order, 'qty')  # ordered amount in quote currency
-        leaveQty = self.safe_float(order, 'leaves_qty')  # leave amount in quote currency
         price = self.safe_float(order, 'price')  # float price in quote currency
-        amount = None  # ordered amount of base currency
-        filled = self.safe_float(order, 'cum_exec_value')  # filled amount of base currency, not return while place order
-        remaining = self.safe_float(order, 'leaves_value')  # leaves_value
-        cost = qty - leaveQty  # filled * price
+        amount = qty  # ordered amount of base currency
+        filled = self.safe_float(order, 'cum_exec_qty')  # filled amount of base currency, not return while place order
+        cum_exec_value = self.safe_float(order, 'cum_exec_value')
+        remaining = self.safe_float(order, 'leaves_qty')  # leaves_value
+        cost = filled  # filled * price
         average = None
-        if cost is not None:
-            if filled:
-                average = cost / filled
+        if filled is not None:
+            if cum_exec_value:
+                average = filled / cum_exec_value
         id = self.safe_string_2(order, 'order_id', 'stop_order_id')
         type = self.safe_string_lower(order, 'order_type')
         side = self.safe_string_lower(order, 'side')
         trades = None
-        fee = None  # fy_todo {"currency":"xx", "cost":xx, "rate":xx} `cum_exec_fee` not return now
+        fee = self.safe_float(order, 'cum_exec_fee')  # fy_todo {"currency":"xx", "cost":xx, "rate":xx} `cum_exec_fee` not return now
         return {
             'info': order,
             'id': id,
@@ -553,7 +555,7 @@ class bybit (Exchange):
 
     def order_statuses(self, filter=None):
         statuses = {
-            'Created': 'created',
+            'Created': 'open',
             'New': 'open',
             'PartiallyFilled': 'open',
             'Filled': 'closed',
