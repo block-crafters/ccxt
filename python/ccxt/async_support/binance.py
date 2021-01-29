@@ -133,6 +133,7 @@ class binance(Exchange):
                         'margin/priceIndex',
                         # these endpoints require self.apiKey + self.secret
                         'asset/assetDividend',
+                        'asset/transfer',
                         'margin/loan',
                         'margin/repay',
                         'margin/account',
