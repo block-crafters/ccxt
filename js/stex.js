@@ -17,22 +17,28 @@ module.exports = class stex extends Exchange {
             'certified': false,
             // new metainfo interface
             'has': {
+                'cancelAllOrders': true,
+                'cancelOrder': true,
                 'CORS': false,
+                'createDepositAddress': true,
                 'createMarketOrder': false, // limit orders only
-                'fetchCurrencies': true,
-                'fetchMarkets': true,
-                'fetchTicker': true,
-                'fetchTickers': true,
-                'fetchOrderBook': true,
-                'fetchOHLCV': true,
+                'createOrder': true,
                 'fetchBalance': true,
+                'fetchCurrencies': true,
+                'fetchDepositAddress': true,
+                'fetchDeposits': true,
+                'fetchFundingFees': true,
+                'fetchMarkets': true,
+                'fetchMyTrades': true,
+                'fetchOHLCV': true,
                 'fetchOpenOrders': true,
                 'fetchOrder': true,
-                'fetchMyTrades': true,
+                'fetchOrderBook': true,
                 'fetchOrderTrades': true,
-                'fetchDepositAddress': true,
-                'createDepositAddress': true,
-                'fetchDeposits': true,
+                'fetchTicker': true,
+                'fetchTickers': true,
+                'fetchTime': true,
+                'fetchTrades': true,
                 'fetchWithdrawals': true,
                 'withdraw': true,
             },
@@ -173,6 +179,14 @@ module.exports = class stex extends Exchange {
                     'taker': 0.002,
                     'maker': 0.002,
                 },
+            },
+            'commonCurrencies': {
+                'BC': 'Bitcoin Confidential',
+                'BITS': 'Bitcoinus',
+                'BITSW': 'BITS',
+                'BHD': 'Bithold',
+                'BTH': 'Bithereum',
+                'SBTC': 'SBTCT', // SiamBitcoin
             },
             'options': {
                 'parseOrderToPrecision': false,
@@ -407,6 +421,26 @@ module.exports = class stex extends Exchange {
         return this.parseTicker (ticker, market);
     }
 
+    async fetchTime (params = {}) {
+        const response = await this.publicGetPing (params);
+        //
+        //     {
+        //         "success": true,
+        //         "data": {
+        //             "server_datetime": {
+        //                 "date": "2019-01-22 15:13:34.233796",
+        //                 "timezone_type": 3,
+        //                 "timezone": "UTC"
+        //             },
+        //             "server_timestamp": 1548170014
+        //         }
+        //     }
+        //
+        const data = this.safeValue (response, 'data', {});
+        const serverDatetime = this.safeValue (data, 'server_datetime', {});
+        return this.parse8601 (this.safeString (serverDatetime, 'date'));
+    }
+
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
@@ -482,23 +516,18 @@ module.exports = class stex extends Exchange {
         //     }
         //
         const timestamp = this.safeInteger (ticker, 'timestamp');
-        let symbol = undefined;
-        let marketId = this.safeString (ticker, 'id');
-        if (marketId in this.markets_by_id) {
-            market = this.markets_by_id[marketId];
-        } else {
-            marketId = this.safeString (ticker, 'symbol');
-            if (marketId !== undefined) {
-                const [ baseId, quoteId ] = marketId.split ('_');
-                const base = this.safeCurrencyCode (baseId);
-                const quote = this.safeCurrencyCode (quoteId);
-                symbol = base + '/' + quote;
+        const marketId = this.safeString2 (ticker, 'id', 'symbol');
+        const symbol = this.safeSymbol (marketId, market, '_');
+        const last = this.safeFloat (ticker, 'last');
+        const open = this.safeFloat (ticker, 'open');
+        let change = undefined;
+        let percentage = undefined;
+        if (last !== undefined) {
+            if ((open !== undefined) && (open > 0)) {
+                change = last - open;
+                percentage = ((100 / open) * last) - 100;
             }
         }
-        if ((symbol === undefined) && (market !== undefined)) {
-            symbol = market['symbol'];
-        }
-        const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
             'timestamp': timestamp,
@@ -510,12 +539,12 @@ module.exports = class stex extends Exchange {
             'ask': this.safeFloat (ticker, 'ask'),
             'askVolume': undefined,
             'vwap': undefined,
-            'open': this.safeFloat (ticker, 'open'),
+            'open': open,
             'close': last,
             'last': last,
             'previousClose': undefined, // previous day close
-            'change': undefined,
-            'percentage': undefined,
+            'change': change,
+            'percentage': percentage,
             'average': undefined,
             'baseVolume': this.safeFloat (ticker, 'volumeQuote'),
             'quoteVolume': this.safeFloat (ticker, 'volume'),
@@ -583,7 +612,7 @@ module.exports = class stex extends Exchange {
         return this.parseTickers (tickers, symbols);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1d', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     {
         //         "time": 1566086400000,
@@ -645,8 +674,8 @@ module.exports = class stex extends Exchange {
         //         ]
         //     }
         //
-        const ohlcvs = this.safeValue (response, 'data', []);
-        return this.parseOHLCVs (ohlcvs, market, timeframe, since, limit);
+        const data = this.safeValue (response, 'data', []);
+        return this.parseOHLCVs (data, market, timeframe, since, limit);
     }
 
     parseTrade (trade, market = undefined) {
@@ -853,22 +882,8 @@ module.exports = class stex extends Exchange {
         //
         const id = this.safeString (order, 'id');
         const status = this.parseOrderStatus (this.safeString (order, 'status'));
-        let symbol = undefined;
-        let marketId = this.safeString (order, 'currency_pair_id');
-        if (marketId in this.markets_by_id) {
-            market = this.markets_by_id[marketId];
-        } else {
-            marketId = this.safeString (order, 'currency_pair_name');
-            if (marketId !== undefined) {
-                const [ baseId, quoteId ] = marketId.split ('_');
-                const base = this.safeCurrencyCode (baseId);
-                const quote = this.safeCurrencyCode (quoteId);
-                symbol = base + '/' + quote;
-            }
-        }
-        if ((symbol === undefined) && (market !== undefined)) {
-            symbol = market['symbol'];
-        }
+        const marketId = this.safeString2 (order, 'currency_pair_id', 'currency_pair_name');
+        const symbol = this.safeSymbol (marketId, market, '_');
         const timestamp = this.safeTimestamp (order, 'timestamp');
         const price = this.safeFloat (order, 'price');
         const amount = this.safeFloat (order, 'initial_amount');
@@ -902,16 +917,21 @@ module.exports = class stex extends Exchange {
                 'order': id,
             });
         }
+        const stopPrice = this.safeFloat (order, 'trigger_price');
         const result = {
             'info': order,
             'id': id,
+            'clientOrderId': undefined,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'lastTradeTimestamp': undefined,
             'symbol': symbol,
             'type': type,
+            'timeInForce': undefined,
+            'postOnly': undefined,
             'side': side,
             'price': price,
+            'stopPrice': stopPrice,
             'amount': amount,
             'cost': cost,
             'average': undefined,
@@ -1511,7 +1531,7 @@ module.exports = class stex extends Exchange {
         if ((code === undefined) && (currency !== undefined)) {
             code = currency['code'];
         }
-        const type = ('depositId' in transaction) ? 'deposit' : 'withdrawal';
+        const type = ('deposit_status_id' in transaction) ? 'deposit' : 'withdrawal';
         const amount = this.safeFloat (transaction, 'amount');
         const status = this.parseTransactionStatus (this.safeStringLower (transaction, 'status'));
         const timestamp = this.safeTimestamp2 (transaction, 'timestamp', 'created_ts');
@@ -1549,21 +1569,20 @@ module.exports = class stex extends Exchange {
     }
 
     async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
-        if (code === undefined) {
-            throw new ArgumentsRequired (this.id + ' fetchDeposits() requires a currency code argument');
-        }
         await this.loadMarkets ();
-        const currency = this.currency (code);
-        const request = {
-            'currencyTypeName': currency['name'],
-            // 'pageSize': limit, // documented as required, but it works without it
-            // 'pageNum': 0, // also works without it, most likely a typo in the docs
-            // 'sort': 1, // 1 = asc, 0 = desc
-        };
-        if (limit !== undefined) {
-            request['pageSize'] = limit; // default 50
+        let currency = undefined;
+        const request = {};
+        if (code !== undefined) {
+            currency = this.currency (code);
+            request['currencyId'] = currency['id'];
         }
-        const response = await this.privatePostExchangeFundControllerWebsiteFundcontrollerGetPayinCoinRecord (this.extend (request, params));
+        if (limit !== undefined) {
+            request['limit'] = limit;
+        }
+        if (since !== undefined) {
+            request['timeStart'] = since;
+        }
+        const response = await this.profileGetDeposits (this.extend (request, params));
         //
         //     {
         //         "success": true,
@@ -1583,31 +1602,35 @@ module.exports = class stex extends Exchange {
         //                 "status_color": "#BC3D51",
         //                 "created_at": "2018-11-28 12:32:08",
         //                 "timestamp": "1543409389",
-        //                 "confirmations": "1 of 2"
+        //                 "confirmations": "1 of 2",
+        //                 "protocol_specific_settings": {
+        //                     "protocol_name": "Tether OMNI",
+        //                     "protocol_id": 10,
+        //                     "block_explorer_url": "https://omniexplorer.info/search/"
+        //                 }
         //             }
         //         ]
         //     }
         //
-        const deposits = this.safeValue (response, 'datas', {});
+        const deposits = this.safeValue (response, 'data', []);
         return this.parseTransactions (deposits, code, since, limit);
     }
 
     async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
-        if (code === undefined) {
-            throw new ArgumentsRequired (this.id + ' fetchWithdrawals() requires a currency code argument');
-        }
         await this.loadMarkets ();
-        const currency = this.currency (code);
-        const request = {
-            'currencyId': currency['id'],
-            // 'pageSize': limit, // documented as required, but it works without it
-            // 'pageIndex': 0, // also works without it, most likely a typo in the docs
-            // 'tab': 'all', // all, wait (submitted, not audited), success (auditing passed), fail (auditing failed), cancel (canceled by user)
-        };
-        if (limit !== undefined) {
-            request['pageSize'] = limit; // default 50
+        let currency = undefined;
+        const request = {};
+        if (code !== undefined) {
+            currency = this.currency (code);
+            request['currencyId'] = currency['id'];
         }
-        const response = await this.privateGetExchangeFundControllerWebsiteFundwebsitecontrollerGetpayoutcoinrecord (this.extend (request, params));
+        if (limit !== undefined) {
+            request['limit'] = limit;
+        }
+        if (since !== undefined) {
+            request['timeStart'] = since;
+        }
+        const response = await this.profileGetWithdrawals (this.extend (request, params));
         //
         //     {
         //         "success": true,
@@ -1638,6 +1661,11 @@ module.exports = class stex extends Exchange {
         //                     "protocol_id": 10,
         //                     "protocol_name": "Tether OMNI",
         //                     "supports_new_address_creation": false
+        //                 },
+        //                 "protocol_specific_settings": {
+        //                     "protocol_name": "Tether OMNI",
+        //                     "protocol_id": 10,
+        //                     "block_explorer_url": "https://omniexplorer.info/search/"
         //                 }
         //             }
         //         ]
@@ -1697,6 +1725,63 @@ module.exports = class stex extends Exchange {
         //
         const data = this.safeValue (response, 'data', {});
         return this.parseTransaction (data, currency);
+    }
+
+    async fetchFundingFees (codes = undefined, params = {}) {
+        const response = await this.publicGetCurrencies (params);
+        //
+        //     {
+        //         "success": true,
+        //         "data": [
+        //             {
+        //                 "id": 1,
+        //                 "code": "BTC",
+        //                 "name": "Bitcoin",
+        //                 "active": true,
+        //                 "delisted": false,
+        //                 "precision": 8,
+        //                 "minimum_tx_confirmations": 24,
+        //                 "minimum_withdrawal_amount": "0.009",
+        //                 "minimum_deposit_amount": "0.000003",
+        //                 "deposit_fee_currency_id": 1,
+        //                 "deposit_fee_currency_code": "ETH",
+        //                 "deposit_fee_const": "0.00001",
+        //                 "deposit_fee_percent": "0",
+        //                 "withdrawal_fee_currency_id": 1,
+        //                 "withdrawal_fee_currency_code": "ETH",
+        //                 "withdrawal_fee_const": "0.0015",
+        //                 "withdrawal_fee_percent": "0",
+        //                 "withdrawal_limit": "string",
+        //                 "block_explorer_url": "https://blockchain.info/tx/",
+        //                 "protocol_specific_settings": [
+        //                     {
+        //                         "protocol_name": "Tether OMNI",
+        //                         "protocol_id": 10,
+        //                         "active": true,
+        //                         "withdrawal_fee_currency_id": 1,
+        //                         "withdrawal_fee_const": 0.002,
+        //                         "withdrawal_fee_percent": 0,
+        //                         "block_explorer_url": "https://omniexplorer.info/search/"
+        //                     }
+        //                 ]
+        //             }
+        //         ]
+        //     }
+        //
+        const data = this.safeValue (response, 'data', []);
+        const withdrawFees = {};
+        const depositFees = {};
+        for (let i = 0; i < data.length; i++) {
+            const id = this.safeString (data[i], 'id');
+            const code = this.safeCurrencyCode (id);
+            withdrawFees[code] = this.safeFloat (data[i], 'withdrawal_fee_const');
+            depositFees[code] = this.safeFloat (data[i], 'deposit_fee_const');
+        }
+        return {
+            'withdraw': withdrawFees,
+            'deposit': depositFees,
+            'info': response,
+        };
     }
 
     handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {

@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError, AuthenticationError, OrderNotFound, InsufficientFunds, DDoSProtection } = require ('./base/errors');
+const { ExchangeError, AuthenticationError, OrderNotFound, InsufficientFunds, DDoSProtection, PermissionDenied, BadSymbol } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -15,23 +15,24 @@ module.exports = class bitforex extends Exchange {
             'countries': [ 'CN' ],
             'version': 'v1',
             'has': {
-                'fetchBalance': true,
-                'fetchMarkets': true,
-                'createOrder': true,
                 'cancelOrder': true,
+                'createOrder': true,
+                'fetchBalance': true,
+                'fetchClosedOrders': true,
+                'fetchMarkets': true,
+                'fetchMyTrades': false,
+                'fetchOHLCV': true,
+                'fetchOpenOrders': true,
+                'fetchOrder': true,
+                'fetchOrderBook': true,
+                'fetchOrders': false,
                 'fetchTicker': true,
                 'fetchTickers': false,
-                'fetchMyTrades': false,
                 'fetchTrades': true,
-                'fetchOrder': true,
-                'fetchOrders': false,
-                'fetchOpenOrders': true,
-                'fetchClosedOrders': true,
-                'fetchOHLCV': true,
             },
             'timeframes': {
                 '1m': '1min',
-                '5m': 'M5',
+                '5m': '5min',
                 '15m': '15min',
                 '30m': '30min',
                 '1h': '1hour',
@@ -43,10 +44,10 @@ module.exports = class bitforex extends Exchange {
                 '1M': '1month',
             },
             'urls': {
-                'logo': 'https://user-images.githubusercontent.com/1294454/44310033-69e9e600-a3d8-11e8-873d-54d74d1bc4e4.jpg',
+                'logo': 'https://user-images.githubusercontent.com/51840849/87295553-1160ec00-c50e-11ea-8ea0-df79276a9646.jpg',
                 'api': 'https://api.bitforex.com',
                 'www': 'https://www.bitforex.com',
-                'doc': 'https://github.com/bitforexapi/API_Docs/wiki',
+                'doc': 'https://github.com/githubdev2020/API_Doc_en/wiki',
                 'fees': 'https://help.bitforex.com/en_us/?cat=13',
                 'referral': 'https://www.bitforex.com/en/invitationRegister?inviterId=1867438',
             },
@@ -220,10 +221,18 @@ module.exports = class bitforex extends Exchange {
                     },
                 },
             },
+            'commonCurrencies': {
+                'CREDIT': 'TerraCredit',
+                'HBC': 'Hybrid Bank Cash',
+                'IQ': 'IQ.Cash',
+                'UOS': 'UOS Network',
+            },
             'exceptions': {
                 '4004': OrderNotFound,
                 '1013': AuthenticationError,
                 '1016': AuthenticationError,
+                '1017': PermissionDenied, // {"code":"1017","success":false,"time":1602670594367,"message":"IP not allow"}
+                '1019': BadSymbol, // {"code":"1019","success":false,"time":1607087743778,"message":"Symbol Invalid"}
                 '3002': InsufficientFunds,
                 '10204': DDoSProtection,
             },
@@ -309,6 +318,7 @@ module.exports = class bitforex extends Exchange {
             'cost': cost,
             'order': orderId,
             'fee': undefined,
+            'takerOrMaker': undefined,
         };
     }
 
@@ -376,7 +386,18 @@ module.exports = class bitforex extends Exchange {
         };
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
+        //
+        //     {
+        //         "close":0.02505143,
+        //         "currencyVol":0,
+        //         "high":0.02506422,
+        //         "low":0.02505143,
+        //         "open":0.02506095,
+        //         "time":1591508940000,
+        //         "vol":51.1869
+        //     }
+        //
         return [
             this.safeInteger (ohlcv, 'time'),
             this.safeFloat (ohlcv, 'open'),
@@ -398,8 +419,19 @@ module.exports = class bitforex extends Exchange {
             request['size'] = limit; // default 1, max 600
         }
         const response = await this.publicGetApiV1MarketKline (this.extend (request, params));
-        const ohlcvs = this.safeValue (response, 'data', []);
-        return this.parseOHLCVs (ohlcvs, market, timeframe, since, limit);
+        //
+        //     {
+        //         "data":[
+        //             {"close":0.02505143,"currencyVol":0,"high":0.02506422,"low":0.02505143,"open":0.02506095,"time":1591508940000,"vol":51.1869},
+        //             {"close":0.02503914,"currencyVol":0,"high":0.02506687,"low":0.02503914,"open":0.02505358,"time":1591509000000,"vol":9.1082},
+        //             {"close":0.02505172,"currencyVol":0,"high":0.02507466,"low":0.02503895,"open":0.02506371,"time":1591509060000,"vol":63.7431},
+        //         ],
+        //         "success":true,
+        //         "time":1591509427131
+        //     }
+        //
+        const data = this.safeValue (response, 'data', []);
+        return this.parseOHLCVs (data, market, timeframe, since, limit);
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
@@ -462,13 +494,17 @@ module.exports = class bitforex extends Exchange {
         const result = {
             'info': order,
             'id': id,
+            'clientOrderId': undefined,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'lastTradeTimestamp': lastTradeTimestamp,
             'symbol': symbol,
             'type': type,
+            'timeInForce': undefined,
+            'postOnly': undefined,
             'side': side,
             'price': price,
+            'stopPrice': undefined,
             'cost': cost,
             'average': average,
             'amount': amount,
@@ -476,6 +512,7 @@ module.exports = class bitforex extends Exchange {
             'remaining': remaining,
             'status': status,
             'fee': fee,
+            'trades': undefined,
         };
         return result;
     }
