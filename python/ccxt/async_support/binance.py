@@ -1911,6 +1911,8 @@ class binance(Exchange):
         method = None
         if type == 'spot':
             method = 'privateGetMyTrades'
+        elif type == 'margin':
+            method = 'sapiGetMarginMyTrades'
         elif type == 'future':
             method = 'fapiPrivateGetUserTrades'
         elif type == 'delivery':
