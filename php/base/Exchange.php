@@ -36,7 +36,7 @@ use Elliptic\EC;
 use Elliptic\EdDSA;
 use BN\BN;
 
-$version = '1.41.12';
+$version = '1.41.99';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -55,13 +55,14 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.41.12';
+    const VERSION = '1.41.99';
 
     private static $base58_alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
     private static $base58_encoder = null;
     private static $base58_decoder = null;
 
     public static $exchanges = array(
+        'aax',
         'acx',
         'aofex',
         'bequant',
@@ -289,6 +290,10 @@ class Exchange {
             return $integer . $decimal;
         }
         return sprintf('%d', floatval($number));
+    }
+
+    public static function uuid22($length = 22) {
+        return bin2hex(random_bytes(intval($length / 2)));
     }
 
     public static function uuid() {
@@ -842,7 +847,6 @@ class Exchange {
         // rate limiter params
         $this->rateLimit = 2000;
         $this->tokenBucket = array(
-            'refillRate' => 1.0 / $this->rateLimit,
             'delay' => 1.0,
             'capacity' => 1.0,
             'defaultCost' => 1.0,
@@ -1213,11 +1217,12 @@ class Exchange {
         return static::binary_to_base58(static::base16_to_binary($signature->toHex()));
     }
 
-    public function throttle() {
+    public function throttle($rate_limit, $cost = null) {
+        // TODO: use a token bucket here
         $now = $this->milliseconds();
         $elapsed = $now - $this->lastRestRequestTimestamp;
-        if ($elapsed < $this->rateLimit) {
-            $delay = $this->rateLimit - $elapsed;
+        if ($elapsed < $rate_limit) {
+            $delay = $rate_limit - $elapsed;
             usleep((int) ($delay * 1000.0));
         }
     }
@@ -1228,7 +1233,7 @@ class Exchange {
 
     public function fetch2($path, $api = 'public', $method = 'GET', $params = array(), $headers = null, $body = null) {
         if ($this->enableRateLimit) {
-            $this->throttle();
+            $this->throttle($this->rateLimit);
         }
         $request = $this->sign($path, $api, $method, $params, $headers, $body);
         return $this->fetch($request['url'], $request['method'], $request['headers'], $request['body']);
@@ -1274,10 +1279,6 @@ class Exchange {
         return null;
     }
 
-    public function handle_errors($code, $reason, $url, $method, $headers, $body, $response, $request_headers, $request_body) {
-        // it's a stub function, does nothing in base code
-    }
-
     public function parse_json($json_string, $as_associative_array = true) {
         return json_decode($json_string, $as_associative_array);
     }
@@ -1299,6 +1300,14 @@ class Exchange {
 
     public function setHeaders($headers) {
         return $this->set_headers($headers);
+    }
+
+    public function handle_errors($code, $reason, $url, $method, $headers, $body, $response, $request_headers, $request_body) {
+        // it's a stub function, does nothing in base code
+    }
+
+    public function on_rest_response($code, $reason, $url, $method, $response_headers, $response_body, $request_headers, $request_body) {
+        return is_string($response_body) ? trim($response_body) : $response_body;
     }
 
     public function fetch($url, $method = 'GET', $headers = null, $body = null) {
@@ -1445,7 +1454,13 @@ class Exchange {
             curl_setopt_array($this->curl, $this->curl_options);
         }
 
-        $result = trim(curl_exec($this->curl));
+        $result = curl_exec($this->curl);
+
+        $curl_errno = curl_errno($this->curl);
+        $curl_error = curl_error($this->curl);
+        $http_status_code = curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
+
+        $result = $this->on_rest_response($http_status_code, $http_status_text, $url, $method, $response_headers, $result, $headers, $body);
 
         $this->lastRestRequestTimestamp = $this->milliseconds();
 
@@ -1466,10 +1481,6 @@ class Exchange {
                 $this->last_json_response = $json_response;
             }
         }
-
-        $curl_errno = curl_errno($this->curl);
-        $curl_error = curl_error($this->curl);
-        $http_status_code = curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
 
         if ($this->verbose) {
             print_r(array('Response:', $method, $url, $http_status_code, $curl_error, $response_headers, $result));
@@ -1965,20 +1976,20 @@ class Exchange {
         return $result;
     }
 
-    public function filter_by_symbol_since_limit($array, $symbol = null, $since = null, $limit = null) {
-        return $this->filter_by_value_since_limit($array, 'symbol', $symbol, $since, $limit);
+    public function filter_by_symbol_since_limit($array, $symbol = null, $since = null, $limit = null, $tail = false) {
+        return $this->filter_by_value_since_limit($array, 'symbol', $symbol, $since, $limit, 'timestamp', $tail);
     }
 
-    public function filterBySymbolSinceLimit($array, $symbol = null, $since = null, $limit = null) {
-        return $this->filter_by_symbol_since_limit($array, $symbol, $since, $limit);
+    public function filterBySymbolSinceLimit($array, $symbol = null, $since = null, $limit = null, $tail = false) {
+        return $this->filter_by_symbol_since_limit($array, $symbol, $since, $limit, $tail);
     }
 
-    public function filter_by_currency_since_limit($array, $code = null, $since = null, $limit = null) {
-        return $this->filter_by_value_since_limit($array, 'currency', $code, $since, $limit);
+    public function filter_by_currency_since_limit($array, $code = null, $since = null, $limit = null, $tail = false) {
+        return $this->filter_by_value_since_limit($array, 'currency', $code, $since, $limit, 'timestamp', $tail);
     }
 
-    public function filterByCurrencySinceLimit($array, $code = null, $since = null, $limit = null) {
-        return $this->filter_by_currency_since_limit($array, $code, $since, $limit);
+    public function filterByCurrencySinceLimit($array, $code = null, $since = null, $limit = null, $tail = false) {
+        return $this->filter_by_currency_since_limit($array, $code, $since, $limit, $tail);
     }
 
     public function filter_by_array($objects, $key, $values = null, $indexed = true) {

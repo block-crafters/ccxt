@@ -53,6 +53,7 @@ module.exports = class bitfinex2 extends bitfinex {
                 '30m': '30m',
                 '1h': '1h',
                 '3h': '3h',
+                '4h': '4h',
                 '6h': '6h',
                 '12h': '12h',
                 '1d': '1D',
@@ -960,7 +961,7 @@ module.exports = class bitfinex2 extends bitfinex {
             let stopPrice = this.safeFloat (params, 'stopPrice');
             if (priceAuxLimit === undefined) {
                 if (stopPrice === undefined) {
-                    throw new ArgumentsRequired (this.id + ' createOrder requires a stopPrice parameter or a price_aux_limit parameter for a ' + orderType + ' order');
+                    throw new ArgumentsRequired (this.id + ' createOrder() requires a stopPrice parameter or a price_aux_limit parameter for a ' + orderType + ' order');
                 } else {
                     request['price_aux_limit'] = this.numberToString (price);
                 }

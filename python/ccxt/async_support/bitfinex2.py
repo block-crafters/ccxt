@@ -66,6 +66,7 @@ class bitfinex2(bitfinex):
                 '30m': '30m',
                 '1h': '1h',
                 '3h': '3h',
+                '4h': '4h',
                 '6h': '6h',
                 '12h': '12h',
                 '1d': '1D',
@@ -921,7 +922,7 @@ class bitfinex2(bitfinex):
             stopPrice = self.safe_float(params, 'stopPrice')
             if priceAuxLimit is None:
                 if stopPrice is None:
-                    raise ArgumentsRequired(self.id + ' createOrder requires a stopPrice parameter or a price_aux_limit parameter for a ' + orderType + ' order')
+                    raise ArgumentsRequired(self.id + ' createOrder() requires a stopPrice parameter or a price_aux_limit parameter for a ' + orderType + ' order')
                 else:
                     request['price_aux_limit'] = self.number_to_string(price)
             else:
