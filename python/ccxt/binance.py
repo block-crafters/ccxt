@@ -240,6 +240,7 @@ class binance(Exchange):
                         'futures/transfer',
                         'futures/loan/borrow',
                         'futures/loan/repay',
+                        'futures/loan/interestHistory',
                         'futures/loan/adjustCollateral',
                         # lending
                         'lending/customizedFixed/purchase',
