@@ -152,6 +152,7 @@ class binance(Exchange):
                         'futures/transfer',
                         'futures/loan/borrow/history',
                         'futures/loan/repay/history',
+                        'futures/loan/interestHistory',
                         'futures/loan/wallet',
                         'futures/loan/configs',
                         'futures/loan/calcAdjustLevel',
