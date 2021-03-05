@@ -176,6 +176,7 @@ class binance(Exchange):
                         'sub-account/status',
                         'sub-account/transfer/subUserHistory',
                         'sub-account/universalTransfer',
+                        'sub-account/sub/transfer/history',
                         # lending endpoints
                         'lending/daily/product/list',
                         'lending/daily/userLeftQuota',
